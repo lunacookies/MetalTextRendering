@@ -11,12 +11,25 @@
 {
 	[super viewDidLoad];
 
+	CGView *cgView = [[CGView alloc] init];
+
+	NSBox *separator = [[NSBox alloc] init];
+	separator.boxType = NSBoxSeparator;
+
 	MetalView *metalView = [[MetalView alloc] init];
-	NSViewController *metalViewController = [[NSViewController alloc] init];
-	metalViewController.view = metalView;
-	NSSplitViewItem *item =
-	        [NSSplitViewItem splitViewItemWithViewController:metalViewController];
-	[self addSplitViewItem:item];
+
+	NSStackView *stackView = [NSStackView stackViewWithViews:@[ cgView, separator, metalView ]];
+	stackView.spacing = 0;
+
+	[self.view addSubview:stackView];
+	stackView.translatesAutoresizingMaskIntoConstraints = NO;
+	[NSLayoutConstraint activateConstraints:@[
+		[stackView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+		[stackView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+		[stackView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+		[stackView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+		[cgView.widthAnchor constraintEqualToAnchor:metalView.widthAnchor],
+	]];
 }
 
 @end

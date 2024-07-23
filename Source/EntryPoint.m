@@ -1,10 +1,12 @@
 @import AppKit;
 @import Metal;
 
+#include "CGView.h"
 #include "MetalView.h"
 #include "MainViewController.h"
 #include "AppDelegate.h"
 
+#include "CGView.m"
 #include "MetalView.m"
 #include "MainViewController.m"
 #include "AppDelegate.m"
