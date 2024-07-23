@@ -1,10 +1,12 @@
 @import AppKit;
 @import Metal;
 
-#include "MainView.h"
+#include "MetalView.h"
+#include "MainViewController.h"
 #include "AppDelegate.h"
 
-#include "MainView.m"
+#include "MetalView.m"
+#include "MainViewController.m"
 #include "AppDelegate.m"
 
 int32_t

@@ -1,0 +1,2 @@
+@interface MainViewController : NSSplitViewController
+@end

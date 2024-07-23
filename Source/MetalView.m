@@ -4,10 +4,10 @@ CALayer (Private)
 @end
 
 @interface
-MainView () <CALayerDelegate>
+MetalView () <CALayerDelegate>
 @end
 
-@implementation MainView
+@implementation MetalView
 {
 	id<MTLDevice> device;
 	id<MTLCommandQueue> commandQueue;
