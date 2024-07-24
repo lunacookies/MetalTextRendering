@@ -6,10 +6,10 @@
 	        initWithString:@"The quick brown fox jumps over the lazy dog."
 	            attributes:@{
 		            NSFontAttributeName : [NSFont fontWithName:@"Zapfino" size:50],
-		            NSForegroundColorAttributeName : NSColor.labelColor
+		            NSForegroundColorAttributeName : NSColor.labelColor,
 	            }];
 
-	[attributedString drawInRect:self.frame];
+	[attributedString drawInRect:self.bounds];
 }
 
 @end

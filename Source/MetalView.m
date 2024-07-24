@@ -3,6 +3,19 @@ CALayer (Private)
 - (void)setContentsChanged;
 @end
 
+typedef struct Arguments Arguments;
+struct Arguments
+{
+	simd_float2 size;
+};
+
+typedef struct Sprite Sprite;
+struct Sprite
+{
+	simd_float2 position;
+	simd_float2 size;
+};
+
 @interface
 MetalView () <CALayerDelegate>
 @end
@@ -42,23 +55,147 @@ MetalView () <CALayerDelegate>
 
 - (void)displayLayer:(CALayer *)layer
 {
+	NSAttributedString *attributedString = [[NSAttributedString alloc]
+	        initWithString:@"The quick brown fox jumps over the lazy dog."
+	            attributes:@{
+		            NSFontAttributeName : [NSFont fontWithName:@"Zapfino" size:50],
+		            NSForegroundColorAttributeName : NSColor.labelColor,
+	            }];
+
+	CTFramesetterRef framesetter = CTFramesetterCreateWithAttributedString(
+	        (__bridge CFAttributedStringRef)attributedString);
+
+	CGSize frameSizeConstraints = self.bounds.size;
+	frameSizeConstraints.height = CGFLOAT_MAX;
+
+	CGSize frameSize = CTFramesetterSuggestFrameSizeWithConstraints(
+	        framesetter, (CFRange){0}, NULL, frameSizeConstraints, NULL);
+
+	CGRect frameRect = self.bounds;
+	frameRect.origin.y = self.bounds.size.height - frameSize.height;
+	frameRect.size.height = frameSize.height;
+
+	CGPathRef path = CGPathCreateWithRect(frameRect, NULL);
+	CTFrameRef frame = CTFramesetterCreateFrame(framesetter, (CFRange){0}, path, NULL);
+
+	CFArrayRef lines = CTFrameGetLines(frame);
+	imm lineCount = CFArrayGetCount(lines);
+
+	CGPoint *lineOrigins = calloc((umm)lineCount, sizeof(CGPoint));
+	CTFrameGetLineOrigins(frame, (CFRange){0}, lineOrigins);
+
+	imm frameGlyphCount = 0;
+	for (imm lineIndex = 0; lineIndex < lineCount; lineIndex++)
+	{
+		CTLineRef line = CFArrayGetValueAtIndex(lines, lineIndex);
+		frameGlyphCount += CTLineGetGlyphCount(line);
+	}
+
+	float scaleFactor = (float)self.window.backingScaleFactor;
+
+	Sprite *sprites = calloc((umm)frameGlyphCount, sizeof(Sprite));
+	imm spriteCount = 0;
+
+	for (imm lineIndex = 0; lineIndex < lineCount; lineIndex++)
+	{
+		CTLineRef line = CFArrayGetValueAtIndex(lines, lineIndex);
+		CGPoint lineOrigin = lineOrigins[lineIndex];
+		lineOrigin.x += frameRect.origin.x;
+		lineOrigin.y += frameRect.origin.y;
+
+		CFArrayRef runs = CTLineGetGlyphRuns(line);
+		imm runCount = CFArrayGetCount(runs);
+
+		for (imm runIndex = 0; runIndex < runCount; runIndex++)
+		{
+			CTRunRef run = CFArrayGetValueAtIndex(runs, runIndex);
+
+			CFDictionaryRef runAttributes = CTRunGetAttributes(run);
+			const void *runFontRaw =
+			        CFDictionaryGetValue(runAttributes, kCTFontAttributeName);
+
+			// Ensure we actually have a CTFont instance.
+			Assert(CFGetTypeID(runFontRaw) == CTFontGetTypeID());
+
+			CTFontRef runFont = runFontRaw;
+
+			imm runGlyphCount = CTRunGetGlyphCount(run);
+
+			CGGlyph *glyphs = calloc((umm)runGlyphCount, sizeof(CGGlyph));
+			CTRunGetGlyphs(run, (CFRange){0}, glyphs);
+
+			CGPoint *glyphPositions = calloc((umm)runGlyphCount, sizeof(CGPoint));
+			CTRunGetPositions(run, (CFRange){0}, glyphPositions);
+
+			CGRect *glyphBoundingRects = calloc((umm)runGlyphCount, sizeof(CGRect));
+			CTFontGetBoundingRectsForGlyphs(runFont, kCTFontOrientationDefault, glyphs,
+			        glyphBoundingRects, runGlyphCount);
+
+			for (imm glyphIndex = 0; glyphIndex < runGlyphCount; glyphIndex++)
+			{
+				CGPoint glyphPosition = glyphPositions[glyphIndex];
+				CGRect glyphBoundingRect = glyphBoundingRects[glyphIndex];
+
+				if (glyphBoundingRect.size.width == 0 ||
+				        glyphBoundingRect.size.height == 0)
+				{
+					continue;
+				}
+
+				Sprite *sprite = sprites + spriteCount;
+				spriteCount++;
+
+				sprite->position.x = (float)(lineOrigin.x + glyphPosition.x +
+				                             glyphBoundingRect.origin.x);
+				sprite->position.y = (float)(lineOrigin.y + glyphPosition.y +
+				                             glyphBoundingRect.origin.y);
+
+				sprite->size.x = (float)glyphBoundingRect.size.width;
+				sprite->size.y = (float)glyphBoundingRect.size.height;
+
+				sprite->position *= scaleFactor;
+				sprite->size *= scaleFactor;
+			}
+
+			free(glyphs);
+			free(glyphPositions);
+			free(glyphBoundingRects);
+		}
+	}
+
 	id<MTLCommandBuffer> commandBuffer = [commandQueue commandBuffer];
 
 	MTLRenderPassDescriptor *descriptor = [[MTLRenderPassDescriptor alloc] init];
 	descriptor.colorAttachments[0].texture = texture;
 	descriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
+	descriptor.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0);
 
 	id<MTLRenderCommandEncoder> encoder =
 	        [commandBuffer renderCommandEncoderWithDescriptor:descriptor];
 
+	NSSize size = [self convertSizeToBacking:self.bounds.size];
+	Arguments arguments = {0};
+	arguments.size.x = (float)size.width;
+	arguments.size.y = (float)size.height;
+
 	[encoder setRenderPipelineState:pipelineState];
-	[encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
+	[encoder setVertexBytes:&arguments length:sizeof(arguments) atIndex:0];
+	[encoder setVertexBytes:sprites length:sizeof(*sprites) * (umm)spriteCount atIndex:1];
+	[encoder drawPrimitives:MTLPrimitiveTypeTriangle
+	            vertexStart:0
+	            vertexCount:6
+	          instanceCount:(umm)spriteCount];
 
 	[encoder endEncoding];
 
 	[commandBuffer commit];
 	[commandBuffer waitUntilCompleted];
 	[layer setContentsChanged];
+
+	free(lineOrigins);
+	CFRelease(frame);
+	CFRelease(framesetter);
+	CFRelease(path);
 }
 
 - (void)layoutSublayersOfLayer:(CALayer *)layer
@@ -93,8 +230,8 @@ MetalView () <CALayerDelegate>
 	};
 
 	MTLTextureDescriptor *descriptor = [[MTLTextureDescriptor alloc] init];
-	descriptor.width = (NSUInteger)size.width;
-	descriptor.height = (NSUInteger)size.height;
+	descriptor.width = (umm)size.width;
+	descriptor.height = (umm)size.height;
 	descriptor.usage = MTLTextureUsageRenderTarget;
 	descriptor.pixelFormat = MTLPixelFormatBGRA8Unorm;
 
