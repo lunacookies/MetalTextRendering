@@ -7,7 +7,7 @@ struct GlyphCacheEntry
 	CachedGlyph cachedGlyph;
 };
 
-static const CGFloat padding = 2;
+static const CGFloat padding = 1;
 
 @implementation GlyphCache
 {
@@ -28,7 +28,7 @@ static const CGFloat padding = 2;
 	self = [super init];
 	scaleFactor = scaleFactor_;
 
-	diameter = 128;
+	diameter = 1024;
 
 	MTLTextureDescriptor *descriptor = [[MTLTextureDescriptor alloc] init];
 	descriptor.width = (umm)diameter;
@@ -79,46 +79,66 @@ static const CGFloat padding = 2;
 	entry->subpixelOffset = subpixelOffset;
 	CachedGlyph *cachedGlyph = &entry->cachedGlyph;
 
-	CGRect boundingRect = {0};
-	CTFontGetBoundingRectsForGlyphs(font, kCTFontOrientationDefault, &glyph, &boundingRect, 1);
+	CGRect boundingRect = [self boundingRectForGlyph:glyph fromFont:font];
 
-	if ((cursor.x + boundingRect.size.width) * scaleFactor >= diameter)
+	if ((cursor.x + boundingRect.size.width) >= diameter)
 	{
 		cursor.x = 0;
-		cursor.y += largestGlyphHeight + padding;
+		cursor.y += ceil(largestGlyphHeight) + 2 * padding;
 		largestGlyphHeight = 0;
 	}
 
 	CGPoint position = cursor;
-	cachedGlyph->position.x = (float)(position.x * scaleFactor);
-	cachedGlyph->position.y = (float)(position.y * scaleFactor);
+	cachedGlyph->position.x = (float)position.x;
+	cachedGlyph->position.y = (float)position.y;
 
 	position.x -= boundingRect.origin.x;
 	position.y -= boundingRect.origin.y;
 
-	position.x += subpixelOffset.x / scaleFactor;
-	position.y += subpixelOffset.y / scaleFactor;
+	position.x += subpixelOffset.x;
+	position.y += subpixelOffset.y;
 
-	position.x += padding / scaleFactor;
-	position.y += padding / scaleFactor;
+	position.x += padding;
+	position.y += padding;
 
 	largestGlyphHeight = Max(largestGlyphHeight, boundingRect.size.height);
+
+	[self drawGlyph:glyph fromFont:font atPosition:position];
+
+	cursor.x += ceil(boundingRect.size.width) + 2 * padding;
+
+	cachedGlyph->size.x = (float)ceil(boundingRect.size.width);
+	cachedGlyph->size.y = (float)ceil(boundingRect.size.height);
+	cachedGlyph->size += 2 * padding;
+
+	cachedGlyph->offset = padding;
+
+	return *cachedGlyph;
+}
+
+- (void)drawGlyph:(CGGlyph)glyph fromFont:(CTFontRef)font atPosition:(CGPoint)position
+{
+	position.x /= scaleFactor;
+	position.y /= scaleFactor;
 
 	CTFontDrawGlyphs(font, &glyph, &position, 1, context);
 	[texture replaceRegion:MTLRegionMake2D(0, 0, (umm)diameter, (umm)diameter)
 	           mipmapLevel:0
 	             withBytes:CGBitmapContextGetData(context)
 	           bytesPerRow:(umm)diameter];
+}
 
-	cursor.x += boundingRect.size.width + padding;
+- (CGRect)boundingRectForGlyph:(CGGlyph)glyph fromFont:(CTFontRef)font
+{
+	CGRect boundingRect = {0};
+	CTFontGetBoundingRectsForGlyphs(font, kCTFontOrientationDefault, &glyph, &boundingRect, 1);
 
-	cachedGlyph->size.x = (float)(boundingRect.size.width * scaleFactor);
-	cachedGlyph->size.y = (float)(boundingRect.size.height * scaleFactor);
-	cachedGlyph->size += 2 * padding;
+	boundingRect.origin.x *= scaleFactor;
+	boundingRect.origin.y *= scaleFactor;
+	boundingRect.size.width *= scaleFactor;
+	boundingRect.size.height *= scaleFactor;
 
-	cachedGlyph->offset = padding;
-
-	return *cachedGlyph;
+	return boundingRect;
 }
 
 - (void)dealloc
