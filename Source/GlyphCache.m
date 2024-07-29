@@ -96,6 +96,9 @@ static const CGFloat padding = 2;
 	position.x -= boundingRect.origin.x;
 	position.y -= boundingRect.origin.y;
 
+	position.x += subpixelOffset.x / scaleFactor;
+	position.y += subpixelOffset.y / scaleFactor;
+
 	position.x += padding / scaleFactor;
 	position.y += padding / scaleFactor;
 

@@ -162,18 +162,33 @@ MetalView () <CALayerDelegate>
 					continue;
 				}
 
-				CachedGlyph cachedGlyph = [glyphCache cachedGlyph:glyph
-				                                             font:runFont
-				                                   subpixelOffset:(CGPoint){0}];
+				CGPoint rawPosition = {0};
+				rawPosition.x =
+				        lineOrigin.x + glyphPosition.x + glyphBoundingRect.origin.x;
+				rawPosition.y =
+				        lineOrigin.y + glyphPosition.y + glyphBoundingRect.origin.y;
+
+				rawPosition.x *= scaleFactor;
+				rawPosition.y *= scaleFactor;
+
+				CGPoint roundedPosition = {0};
+				roundedPosition.x = floor(rawPosition.x);
+				roundedPosition.y = floor(rawPosition.y);
+
+				CGPoint fractionalPosition = {0};
+				fractionalPosition.x = rawPosition.x - roundedPosition.x;
+				fractionalPosition.y = rawPosition.y - roundedPosition.y;
+
+				CachedGlyph cachedGlyph =
+				        [glyphCache cachedGlyph:glyph
+				                           font:runFont
+				                 subpixelOffset:fractionalPosition];
 
 				Sprite *sprite = sprites + spriteCount;
 				spriteCount++;
 
-				sprite->position.x = (float)(lineOrigin.x + glyphPosition.x +
-				                             glyphBoundingRect.origin.x);
-				sprite->position.y = (float)(lineOrigin.y + glyphPosition.y +
-				                             glyphBoundingRect.origin.y);
-				sprite->position *= scaleFactor;
+				sprite->position.x = (float)roundedPosition.x;
+				sprite->position.y = (float)roundedPosition.y;
 				sprite->position -= cachedGlyph.offset;
 
 				sprite->size = cachedGlyph.size;
