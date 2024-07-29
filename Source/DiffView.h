@@ -1,4 +1,3 @@
-@interface MetalView : NSView
+@interface DiffView : NSView
 - (instancetype)initWithNotificationCenter:(NSNotificationCenter *)notificationCenter;
-@property NSAttributedString *attributedString;
 @end

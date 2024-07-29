@@ -18,16 +18,24 @@
 		            NSForegroundColorAttributeName : NSColor.labelColor,
 	            }];
 
-	CGView *cgView = [[CGView alloc] init];
+	NSNotificationCenter *notificationCenter = [[NSNotificationCenter alloc] init];
+
+	CGView *cgView = [[CGView alloc] initWithNotificationCenter:notificationCenter];
 	cgView.attributedString = attributedString;
 
 	NSBox *separator = [[NSBox alloc] init];
 	separator.boxType = NSBoxSeparator;
 
-	MetalView *metalView = [[MetalView alloc] init];
+	MetalView *metalView = [[MetalView alloc] initWithNotificationCenter:notificationCenter];
 	metalView.attributedString = attributedString;
 
-	NSStackView *stackView = [NSStackView stackViewWithViews:@[ cgView, separator, metalView ]];
+	NSBox *separator2 = [[NSBox alloc] init];
+	separator2.boxType = NSBoxSeparator;
+
+	DiffView *diffView = [[DiffView alloc] initWithNotificationCenter:notificationCenter];
+
+	NSStackView *stackView = [NSStackView
+	        stackViewWithViews:@[ cgView, separator, metalView, separator2, diffView ]];
 	stackView.spacing = 0;
 
 	[self.view addSubview:stackView];
@@ -38,6 +46,7 @@
 		[stackView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
 		[stackView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
 		[cgView.widthAnchor constraintEqualToAnchor:metalView.widthAnchor],
+		[cgView.widthAnchor constraintEqualToAnchor:diffView.widthAnchor],
 	]];
 }
 

@@ -1,5 +1,6 @@
 @import AppKit;
 @import Metal;
+@import QuartzCore;
 @import simd;
 
 typedef int8_t int8;
@@ -29,15 +30,25 @@ typedef ptrdiff_t imm;
 		__builtin_debugtrap(); \
 	}
 
+static NSString *const UpdatedTextureANotificationName = @"UpdatedTextureA";
+static NSString *const UpdatedTextureBNotificationName = @"UpdatedTextureB";
+
+@interface
+CALayer (Private)
+- (void)setContentsChanged;
+@end
+
 #include "GlyphCache.h"
 #include "CGView.h"
 #include "MetalView.h"
+#include "DiffView.h"
 #include "MainViewController.h"
 #include "AppDelegate.h"
 
 #include "GlyphCache.m"
 #include "CGView.m"
 #include "MetalView.m"
+#include "DiffView.m"
 #include "MainViewController.m"
 #include "AppDelegate.m"
 

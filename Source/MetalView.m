@@ -1,8 +1,3 @@
-@interface
-CALayer (Private)
-- (void)setContentsChanged;
-@end
-
 typedef struct Arguments Arguments;
 struct Arguments
 {
@@ -25,6 +20,8 @@ MetalView () <CALayerDelegate>
 
 @implementation MetalView
 {
+	NSNotificationCenter *notificationCenter;
+
 	id<MTLDevice> device;
 	id<MTLCommandQueue> commandQueue;
 	id<MTLRenderPipelineState> pipelineState;
@@ -37,9 +34,11 @@ MetalView () <CALayerDelegate>
 	NSAttributedString *attributedString;
 }
 
-- (instancetype)initWithFrame:(NSRect)frame
+- (instancetype)initWithNotificationCenter:(NSNotificationCenter *)notificationCenter_
 {
-	self = [super initWithFrame:frame];
+	self = [super init];
+
+	notificationCenter = notificationCenter_;
 
 	self.layer = [CALayer layer];
 	self.layer.delegate = self;
@@ -205,10 +204,17 @@ MetalView () <CALayerDelegate>
 
 	id<MTLCommandBuffer> commandBuffer = [commandQueue commandBuffer];
 
+	NSColor *backgroundColor = [NSColor.windowBackgroundColor colorUsingColorSpace:colorSpace];
+	MTLClearColor clearColor = {0};
+	clearColor.red = backgroundColor.redComponent;
+	clearColor.green = backgroundColor.greenComponent;
+	clearColor.blue = backgroundColor.blueComponent;
+	clearColor.alpha = backgroundColor.alphaComponent;
+
 	MTLRenderPassDescriptor *descriptor = [[MTLRenderPassDescriptor alloc] init];
 	descriptor.colorAttachments[0].texture = texture;
 	descriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
-	descriptor.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0);
+	descriptor.colorAttachments[0].clearColor = clearColor;
 
 	id<MTLRenderCommandEncoder> encoder =
 	        [commandBuffer renderCommandEncoderWithDescriptor:descriptor];
@@ -240,6 +246,8 @@ MetalView () <CALayerDelegate>
 	[commandBuffer commit];
 	[commandBuffer waitUntilCompleted];
 	[layer setContentsChanged];
+
+	[notificationCenter postNotificationName:UpdatedTextureBNotificationName object:texture];
 
 	free(lineOrigins);
 	free(sprites);
@@ -285,7 +293,7 @@ MetalView () <CALayerDelegate>
 	MTLTextureDescriptor *descriptor = [[MTLTextureDescriptor alloc] init];
 	descriptor.width = (umm)size.width;
 	descriptor.height = (umm)size.height;
-	descriptor.usage = MTLTextureUsageRenderTarget;
+	descriptor.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
 	descriptor.pixelFormat = MTLPixelFormatBGRA8Unorm;
 
 	if (iosurface != NULL)
