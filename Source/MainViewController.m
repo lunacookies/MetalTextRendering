@@ -18,7 +18,7 @@
 		            NSForegroundColorAttributeName : NSColor.labelColor,
 	            }];
 
-	NSColor *backgroundColor = NSColor.windowBackgroundColor;
+	NSColor *backgroundColor = NSColor.textBackgroundColor;
 
 	NSNotificationCenter *notificationCenter = [[NSNotificationCenter alloc] init];
 
