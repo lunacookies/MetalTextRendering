@@ -63,7 +63,7 @@ fragment_main(rasterizer_data input [[stage_in]],
 {
 	sprite sprite = sprites[input.instance_id];
 
-	sampler sampler(filter::nearest);
+	sampler sampler(filter::nearest, address::clamp_to_border, border_color::opaque_white);
 	float sample = arguments.glyph_cache.sample(sampler, input.texture_coordinates).r;
 
 	float4 result = sprite.color;
