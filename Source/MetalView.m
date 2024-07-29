@@ -32,6 +32,7 @@ MetalView () <CALayerDelegate>
 	GlyphCache *glyphCache;
 
 	NSAttributedString *attributedString;
+	NSColor *backgroundColor;
 }
 
 - (instancetype)initWithNotificationCenter:(NSNotificationCenter *)notificationCenter_
@@ -204,12 +205,12 @@ MetalView () <CALayerDelegate>
 
 	id<MTLCommandBuffer> commandBuffer = [commandQueue commandBuffer];
 
-	NSColor *backgroundColor = [NSColor.windowBackgroundColor colorUsingColorSpace:colorSpace];
+	NSColor *convertedBackgroundColor = [backgroundColor colorUsingColorSpace:colorSpace];
 	MTLClearColor clearColor = {0};
-	clearColor.red = backgroundColor.redComponent;
-	clearColor.green = backgroundColor.greenComponent;
-	clearColor.blue = backgroundColor.blueComponent;
-	clearColor.alpha = backgroundColor.alphaComponent;
+	clearColor.red = convertedBackgroundColor.redComponent;
+	clearColor.green = convertedBackgroundColor.greenComponent;
+	clearColor.blue = convertedBackgroundColor.blueComponent;
+	clearColor.alpha = convertedBackgroundColor.alphaComponent;
 
 	MTLRenderPassDescriptor *descriptor = [[MTLRenderPassDescriptor alloc] init];
 	descriptor.colorAttachments[0].texture = texture;
@@ -316,6 +317,17 @@ MetalView () <CALayerDelegate>
 - (void)setAttributedString:(NSAttributedString *)attributedString_
 {
 	attributedString = attributedString_;
+	[self.layer setNeedsDisplay];
+}
+
+- (NSColor *)backgroundColor
+{
+	return backgroundColor;
+}
+
+- (void)setBackgroundColor:(NSColor *)backgroundColor_
+{
+	backgroundColor = backgroundColor_;
 	[self.layer setNeedsDisplay];
 }
 

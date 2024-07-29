@@ -2,6 +2,7 @@
 {
 	NSNotificationCenter *notificationCenter;
 	NSAttributedString *attributedString;
+	NSColor *backgroundColor;
 	id<MTLDevice> device;
 	id<MTLTexture> texture;
 }
@@ -60,7 +61,7 @@
 
 - (void)drawRectInner
 {
-	[NSColor.windowBackgroundColor setFill];
+	[backgroundColor setFill];
 	NSRectFill(self.bounds);
 	[attributedString drawInRect:self.bounds];
 }
@@ -101,6 +102,17 @@
 - (void)setAttributedString:(NSAttributedString *)attributedString_
 {
 	attributedString = attributedString_;
+	self.needsDisplay = YES;
+}
+
+- (NSColor *)backgroundColor
+{
+	return backgroundColor;
+}
+
+- (void)setBackgroundColor:(NSColor *)backgroundColor_
+{
+	backgroundColor = backgroundColor_;
 	self.needsDisplay = YES;
 }
 

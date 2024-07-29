@@ -18,16 +18,20 @@
 		            NSForegroundColorAttributeName : NSColor.labelColor,
 	            }];
 
+	NSColor *backgroundColor = NSColor.windowBackgroundColor;
+
 	NSNotificationCenter *notificationCenter = [[NSNotificationCenter alloc] init];
 
 	CGView *cgView = [[CGView alloc] initWithNotificationCenter:notificationCenter];
 	cgView.attributedString = attributedString;
+	cgView.backgroundColor = backgroundColor;
 
 	NSBox *separator = [[NSBox alloc] init];
 	separator.boxType = NSBoxSeparator;
 
 	MetalView *metalView = [[MetalView alloc] initWithNotificationCenter:notificationCenter];
 	metalView.attributedString = attributedString;
+	metalView.backgroundColor = backgroundColor;
 
 	NSBox *separator2 = [[NSBox alloc] init];
 	separator2.boxType = NSBoxSeparator;
