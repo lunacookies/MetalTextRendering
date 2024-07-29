@@ -174,6 +174,7 @@ MetalView () <CALayerDelegate>
 				sprite->position.y = (float)(lineOrigin.y + glyphPosition.y +
 				                             glyphBoundingRect.origin.y);
 				sprite->position *= scaleFactor;
+				sprite->position -= cachedGlyph.offset;
 
 				sprite->size = cachedGlyph.size;
 				sprite->textureCoordinates = cachedGlyph.position;

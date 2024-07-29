@@ -14,7 +14,7 @@
 	NSAttributedString *attributedString = [[NSAttributedString alloc]
 	        initWithString:@"The quick brown fox jumps over the lazy dog."
 	            attributes:@{
-		            NSFontAttributeName : [NSFont fontWithName:@"Zapfino" size:50],
+		            NSFontAttributeName : [NSFont systemFontOfSize:13],
 		            NSForegroundColorAttributeName : NSColor.labelColor,
 	            }];
 

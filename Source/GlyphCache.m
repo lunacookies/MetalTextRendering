@@ -7,6 +7,8 @@ struct GlyphCacheEntry
 	CachedGlyph cachedGlyph;
 };
 
+static const CGFloat padding = 2;
+
 @implementation GlyphCache
 {
 	imm diameter;
@@ -26,12 +28,13 @@ struct GlyphCacheEntry
 	self = [super init];
 	scaleFactor = scaleFactor_;
 
-	diameter = 1024;
+	diameter = 128;
 
 	MTLTextureDescriptor *descriptor = [[MTLTextureDescriptor alloc] init];
 	descriptor.width = (umm)diameter;
 	descriptor.height = (umm)diameter;
 	descriptor.pixelFormat = MTLPixelFormatR8Unorm;
+	descriptor.storageMode = MTLStorageModeShared;
 	texture = [device newTextureWithDescriptor:descriptor];
 	texture.label = @"Glyph Cache";
 
@@ -82,16 +85,19 @@ struct GlyphCacheEntry
 	if ((cursor.x + boundingRect.size.width) * scaleFactor >= diameter)
 	{
 		cursor.x = 0;
-		cursor.y += largestGlyphHeight;
+		cursor.y += largestGlyphHeight + padding;
 		largestGlyphHeight = 0;
 	}
 
 	CGPoint position = cursor;
-	cachedGlyph->position.x = (float)position.x;
-	cachedGlyph->position.y = (float)position.y;
+	cachedGlyph->position.x = (float)(position.x * scaleFactor);
+	cachedGlyph->position.y = (float)(position.y * scaleFactor);
 
 	position.x -= boundingRect.origin.x;
 	position.y -= boundingRect.origin.y;
+
+	position.x += padding / scaleFactor;
+	position.y += padding / scaleFactor;
 
 	largestGlyphHeight = Max(largestGlyphHeight, boundingRect.size.height);
 
@@ -101,13 +107,13 @@ struct GlyphCacheEntry
 	             withBytes:CGBitmapContextGetData(context)
 	           bytesPerRow:(umm)diameter];
 
-	cursor.x += boundingRect.size.width;
+	cursor.x += boundingRect.size.width + padding;
 
-	cachedGlyph->size.x = (float)boundingRect.size.width;
-	cachedGlyph->size.y = (float)boundingRect.size.height;
+	cachedGlyph->size.x = (float)(boundingRect.size.width * scaleFactor);
+	cachedGlyph->size.y = (float)(boundingRect.size.height * scaleFactor);
+	cachedGlyph->size += 2 * padding;
 
-	cachedGlyph->position *= (float)scaleFactor;
-	cachedGlyph->size *= (float)scaleFactor;
+	cachedGlyph->offset = padding;
 
 	return *cachedGlyph;
 }

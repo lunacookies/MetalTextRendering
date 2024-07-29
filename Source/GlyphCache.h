@@ -3,6 +3,7 @@ struct CachedGlyph
 {
 	simd_float2 position;
 	simd_float2 size;
+	simd_float2 offset;
 };
 
 @interface GlyphCache : NSObject
