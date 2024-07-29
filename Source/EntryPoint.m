@@ -20,17 +20,22 @@ typedef uint64 bool64;
 typedef size_t umm;
 typedef ptrdiff_t imm;
 
+#define Min(x, y) (((x) < (y)) ? (x) : (y))
+#define Max(x, y) (((x) > (y)) ? (x) : (y))
+
 #define Assert(b) \
 	if (!(b)) \
 	{ \
 		__builtin_debugtrap(); \
 	}
 
+#include "GlyphCache.h"
 #include "CGView.h"
 #include "MetalView.h"
 #include "MainViewController.h"
 #include "AppDelegate.h"
 
+#include "GlyphCache.m"
 #include "CGView.m"
 #include "MetalView.m"
 #include "MainViewController.m"

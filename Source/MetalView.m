@@ -7,6 +7,7 @@ typedef struct Arguments Arguments;
 struct Arguments
 {
 	simd_float2 size;
+	MTLResourceID glyphCacheTexture;
 };
 
 typedef struct Sprite Sprite;
@@ -14,6 +15,8 @@ struct Sprite
 {
 	simd_float2 position;
 	simd_float2 size;
+	simd_float2 textureCoordinates;
+	simd_float4 color;
 };
 
 @interface
@@ -28,6 +31,8 @@ MetalView () <CALayerDelegate>
 
 	IOSurfaceRef iosurface;
 	id<MTLTexture> texture;
+
+	GlyphCache *glyphCache;
 }
 
 - (instancetype)initWithFrame:(NSRect)frame
@@ -47,6 +52,13 @@ MetalView () <CALayerDelegate>
 	descriptor.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
 	descriptor.vertexFunction = [library newFunctionWithName:@"vertex_main"];
 	descriptor.fragmentFunction = [library newFunctionWithName:@"fragment_main"];
+	descriptor.colorAttachments[0].blendingEnabled = YES;
+	descriptor.colorAttachments[0].destinationRGBBlendFactor =
+	        MTLBlendFactorOneMinusSourceAlpha;
+	descriptor.colorAttachments[0].destinationAlphaBlendFactor =
+	        MTLBlendFactorOneMinusSourceAlpha;
+	descriptor.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorOne;
+	descriptor.colorAttachments[0].sourceAlphaBlendFactor = MTLBlendFactorOne;
 
 	pipelineState = [device newRenderPipelineStateWithDescriptor:descriptor error:nil];
 
@@ -96,6 +108,9 @@ MetalView () <CALayerDelegate>
 	Sprite *sprites = calloc((umm)frameGlyphCount, sizeof(Sprite));
 	imm spriteCount = 0;
 
+	NSColorSpace *colorSpace = self.window.colorSpace;
+	Assert(colorSpace != nil);
+
 	for (imm lineIndex = 0; lineIndex < lineCount; lineIndex++)
 	{
 		CTLineRef line = CFArrayGetValueAtIndex(lines, lineIndex);
@@ -111,13 +126,22 @@ MetalView () <CALayerDelegate>
 			CTRunRef run = CFArrayGetValueAtIndex(runs, runIndex);
 
 			CFDictionaryRef runAttributes = CTRunGetAttributes(run);
+
 			const void *runFontRaw =
 			        CFDictionaryGetValue(runAttributes, kCTFontAttributeName);
-
-			// Ensure we actually have a CTFont instance.
 			Assert(CFGetTypeID(runFontRaw) == CTFontGetTypeID());
-
 			CTFontRef runFont = runFontRaw;
+
+			const void *unmatchedColorRaw = CFDictionaryGetValue(runAttributes,
+			        (__bridge CFStringRef)NSForegroundColorAttributeName);
+			NSColor *unmatchedColor = (__bridge NSColor *)unmatchedColorRaw;
+			NSColor *color = [unmatchedColor colorUsingColorSpace:colorSpace];
+
+			simd_float4 simdColor = 0;
+			simdColor.r = (float)color.redComponent;
+			simdColor.g = (float)color.greenComponent;
+			simdColor.b = (float)color.blueComponent;
+			simdColor.a = (float)color.alphaComponent;
 
 			imm runGlyphCount = CTRunGetGlyphCount(run);
 
@@ -133,6 +157,7 @@ MetalView () <CALayerDelegate>
 
 			for (imm glyphIndex = 0; glyphIndex < runGlyphCount; glyphIndex++)
 			{
+				CGGlyph glyph = glyphs[glyphIndex];
 				CGPoint glyphPosition = glyphPositions[glyphIndex];
 				CGRect glyphBoundingRect = glyphBoundingRects[glyphIndex];
 
@@ -142,6 +167,10 @@ MetalView () <CALayerDelegate>
 					continue;
 				}
 
+				CachedGlyph cachedGlyph = [glyphCache cachedGlyph:glyph
+				                                             font:runFont
+				                                   subpixelOffset:(CGPoint){0}];
+
 				Sprite *sprite = sprites + spriteCount;
 				spriteCount++;
 
@@ -149,12 +178,12 @@ MetalView () <CALayerDelegate>
 				                             glyphBoundingRect.origin.x);
 				sprite->position.y = (float)(lineOrigin.y + glyphPosition.y +
 				                             glyphBoundingRect.origin.y);
-
-				sprite->size.x = (float)glyphBoundingRect.size.width;
-				sprite->size.y = (float)glyphBoundingRect.size.height;
-
 				sprite->position *= scaleFactor;
-				sprite->size *= scaleFactor;
+
+				sprite->size = cachedGlyph.size;
+				sprite->textureCoordinates = cachedGlyph.position;
+
+				sprite->color = simdColor;
 			}
 
 			free(glyphs);
@@ -177,10 +206,19 @@ MetalView () <CALayerDelegate>
 	Arguments arguments = {0};
 	arguments.size.x = (float)size.width;
 	arguments.size.y = (float)size.height;
+	arguments.glyphCacheTexture = glyphCache.texture.gpuResourceID;
 
 	[encoder setRenderPipelineState:pipelineState];
+	[encoder useResource:glyphCache.texture
+	               usage:MTLResourceUsageRead
+	              stages:MTLRenderStageFragment];
+
 	[encoder setVertexBytes:&arguments length:sizeof(arguments) atIndex:0];
+	[encoder setFragmentBytes:&arguments length:sizeof(arguments) atIndex:0];
+
 	[encoder setVertexBytes:sprites length:sizeof(*sprites) * (umm)spriteCount atIndex:1];
+	[encoder setFragmentBytes:sprites length:sizeof(*sprites) * (umm)spriteCount atIndex:1];
+
 	[encoder drawPrimitives:MTLPrimitiveTypeTriangle
 	            vertexStart:0
 	            vertexCount:6
@@ -193,6 +231,7 @@ MetalView () <CALayerDelegate>
 	[layer setContentsChanged];
 
 	free(lineOrigins);
+	free(sprites);
 	CFRelease(frame);
 	CFRelease(framesetter);
 	CFRelease(path);
@@ -207,6 +246,9 @@ MetalView () <CALayerDelegate>
 - (void)viewDidChangeBackingProperties
 {
 	[super viewDidChangeBackingProperties];
+
+	glyphCache = [[GlyphCache alloc] initWithDevice:device
+	                                    scaleFactor:self.window.backingScaleFactor];
 
 	self.layer.contentsScale = self.window.backingScaleFactor;
 	[self updateIOSurface];
