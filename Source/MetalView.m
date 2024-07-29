@@ -14,10 +14,6 @@ struct Sprite
 	simd_float4 color;
 };
 
-@interface
-MetalView () <CALayerDelegate>
-@end
-
 @implementation MetalView
 {
 	NSNotificationCenter *notificationCenter;
@@ -41,8 +37,6 @@ MetalView () <CALayerDelegate>
 
 	notificationCenter = notificationCenter_;
 
-	self.layer = [CALayer layer];
-	self.layer.delegate = self;
 	self.wantsLayer = YES;
 
 	device = MTLCreateSystemDefaultDevice();
@@ -67,7 +61,12 @@ MetalView () <CALayerDelegate>
 	return self;
 }
 
-- (void)displayLayer:(CALayer *)layer
+- (BOOL)wantsUpdateLayer
+{
+	return YES;
+}
+
+- (void)updateLayer
 {
 	CTFramesetterRef framesetter = CTFramesetterCreateWithAttributedString(
 	        (__bridge CFAttributedStringRef)attributedString);
@@ -246,7 +245,7 @@ MetalView () <CALayerDelegate>
 
 	[commandBuffer commit];
 	[commandBuffer waitUntilCompleted];
-	[layer setContentsChanged];
+	[self.layer setContentsChanged];
 
 	[notificationCenter postNotificationName:UpdatedTextureBNotificationName object:texture];
 
@@ -255,12 +254,6 @@ MetalView () <CALayerDelegate>
 	CFRelease(frame);
 	CFRelease(framesetter);
 	CFRelease(path);
-}
-
-- (void)layoutSublayersOfLayer:(CALayer *)layer
-{
-	[self updateIOSurface];
-	[self.layer setNeedsDisplay];
 }
 
 - (void)viewDidChangeBackingProperties
@@ -272,7 +265,14 @@ MetalView () <CALayerDelegate>
 
 	self.layer.contentsScale = self.window.backingScaleFactor;
 	[self updateIOSurface];
-	[self.layer setNeedsDisplay];
+	self.needsDisplay = YES;
+}
+
+- (void)setFrameSize:(NSSize)size
+{
+	[super setFrameSize:size];
+	[self updateIOSurface];
+	self.needsDisplay = YES;
 }
 
 - (void)updateIOSurface
@@ -317,7 +317,7 @@ MetalView () <CALayerDelegate>
 - (void)setAttributedString:(NSAttributedString *)attributedString_
 {
 	attributedString = attributedString_;
-	[self.layer setNeedsDisplay];
+	self.needsDisplay = YES;
 }
 
 - (NSColor *)backgroundColor
@@ -328,7 +328,7 @@ MetalView () <CALayerDelegate>
 - (void)setBackgroundColor:(NSColor *)backgroundColor_
 {
 	backgroundColor = backgroundColor_;
-	[self.layer setNeedsDisplay];
+	self.needsDisplay = YES;
 }
 
 @end

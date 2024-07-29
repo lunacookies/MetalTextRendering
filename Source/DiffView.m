@@ -1,7 +1,3 @@
-@interface
-DiffView () <CALayerDelegate>
-@end
-
 @implementation DiffView
 {
 	NSNotificationCenter *notificationCenter;
@@ -31,8 +27,6 @@ DiffView () <CALayerDelegate>
 	                           name:UpdatedTextureBNotificationName
 	                         object:nil];
 
-	self.layer = [CALayer layer];
-	self.layer.delegate = self;
 	self.wantsLayer = YES;
 
 	device = MTLCreateSystemDefaultDevice();
@@ -46,7 +40,12 @@ DiffView () <CALayerDelegate>
 	return self;
 }
 
-- (void)displayLayer:(CALayer *)layer
+- (BOOL)wantsUpdateLayer
+{
+	return YES;
+}
+
+- (void)updateLayer
 {
 	if (textureA == nil || textureB == nil)
 	{
@@ -70,13 +69,7 @@ DiffView () <CALayerDelegate>
 
 	[commandBuffer commit];
 	[commandBuffer waitUntilCompleted];
-	[layer setContentsChanged];
-}
-
-- (void)layoutSublayersOfLayer:(CALayer *)layer
-{
-	[self updateIOSurface];
-	[self.layer setNeedsDisplay];
+	[self.layer setContentsChanged];
 }
 
 - (void)viewDidChangeBackingProperties
@@ -85,7 +78,14 @@ DiffView () <CALayerDelegate>
 
 	self.layer.contentsScale = self.window.backingScaleFactor;
 	[self updateIOSurface];
-	[self.layer setNeedsDisplay];
+	self.needsDisplay = YES;
+}
+
+- (void)setFrameSize:(NSSize)size
+{
+	[super setFrameSize:size];
+	[self updateIOSurface];
+	self.needsDisplay = YES;
 }
 
 - (void)updateIOSurface
@@ -125,13 +125,13 @@ DiffView () <CALayerDelegate>
 - (void)didUpdateTextureA:(NSNotification *)notification
 {
 	textureA = notification.object;
-	[self.layer setNeedsDisplay];
+	self.needsDisplay = YES;
 }
 
 - (void)didUpdateTextureB:(NSNotification *)notification
 {
 	textureB = notification.object;
-	[self.layer setNeedsDisplay];
+	self.needsDisplay = YES;
 }
 
 @end
