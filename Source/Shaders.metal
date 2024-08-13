@@ -11,7 +11,8 @@ struct sprite
 {
 	float2 position;
 	float2 size;
-	float2 texture_coordinates;
+	float2 texture_coords_black;
+	float2 texture_coords_white;
 	float4 color;
 };
 
@@ -20,7 +21,9 @@ struct rasterizer_data
 	uint instance_id;
 	float4 position [[position]];
 	float4 color;
-	float2 texture_coordinates;
+	float2 texture_coords_black;
+	float2 texture_coords_white;
+	float black_white_blend;
 };
 
 constant float2 positions[] = {
@@ -48,11 +51,26 @@ vertex_main(uint vertex_id [[vertex_id]],
 	rasterizer_data output = {};
 	output.instance_id = instance_id;
 	output.position = float4(position, 0, 1);
-	output.texture_coordinates =
-	        sprite.texture_coordinates + sprite.size * positions[vertex_id];
-	output.texture_coordinates.x /= arguments.glyph_cache.get_width();
-	output.texture_coordinates.y /= arguments.glyph_cache.get_height();
-	output.texture_coordinates.y = 1 - output.texture_coordinates.y;
+
+	float2 glyph_cache_size = 0;
+	glyph_cache_size.x = arguments.glyph_cache.get_width();
+	glyph_cache_size.y = arguments.glyph_cache.get_height();
+
+	output.texture_coords_black =
+	        sprite.texture_coords_black + sprite.size * positions[vertex_id];
+	output.texture_coords_white =
+	        sprite.texture_coords_white + sprite.size * positions[vertex_id];
+
+	output.texture_coords_black /= glyph_cache_size;
+	output.texture_coords_white /= glyph_cache_size;
+
+	output.texture_coords_black.y = 1 - output.texture_coords_black.y;
+	output.texture_coords_white.y = 1 - output.texture_coords_white.y;
+
+	// Luminance estimate that roughly matches Core Graphics’s behavior well enough.
+	output.black_white_blend =
+	        0.2126 * sprite.color.r + 0.7152 * sprite.color.g + 0.0722 * sprite.color.b;
+
 	return output;
 }
 
@@ -64,7 +82,9 @@ fragment_main(rasterizer_data input [[stage_in]],
 	sprite sprite = sprites[input.instance_id];
 
 	sampler sampler(filter::nearest, address::clamp_to_border, border_color::opaque_white);
-	float sample = arguments.glyph_cache.sample(sampler, input.texture_coordinates).r;
+	float sample_black = arguments.glyph_cache.sample(sampler, input.texture_coords_black).r;
+	float sample_white = arguments.glyph_cache.sample(sampler, input.texture_coords_white).r;
+	float sample = mix(sample_black, sample_white, input.black_white_blend);
 
 	float4 result = sprite.color;
 	result.rgb *= result.a;

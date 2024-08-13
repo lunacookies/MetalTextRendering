@@ -7,7 +7,7 @@ struct GlyphCacheEntry
 	CachedGlyph cachedGlyph;
 };
 
-static const CGFloat padding = 1;
+static const CGFloat padding = 2;
 
 @implementation GlyphCache
 {
@@ -77,41 +77,63 @@ static const CGFloat padding = 1;
 	entry->glyph = glyph;
 	entry->font = font;
 	entry->subpixelOffset = subpixelOffset;
+
 	CachedGlyph *cachedGlyph = &entry->cachedGlyph;
+	cachedGlyph->offset = padding;
 
 	CGRect boundingRect = [self boundingRectForGlyph:glyph fromFont:font];
-
-	if ((cursor.x + boundingRect.size.width) >= diameter)
-	{
-		cursor.x = 0;
-		cursor.y += ceil(largestGlyphHeight) + 2 * padding;
-		largestGlyphHeight = 0;
-	}
-
-	CGPoint position = cursor;
-	cachedGlyph->position.x = (float)position.x;
-	cachedGlyph->position.y = (float)position.y;
-
-	position.x -= boundingRect.origin.x;
-	position.y -= boundingRect.origin.y;
-
-	position.x += subpixelOffset.x;
-	position.y += subpixelOffset.y;
-
-	position.x += padding;
-	position.y += padding;
-
-	largestGlyphHeight = Max(largestGlyphHeight, boundingRect.size.height);
-
-	[self drawGlyph:glyph fromFont:font atPosition:position];
-
-	cursor.x += ceil(boundingRect.size.width) + 2 * padding;
-
 	cachedGlyph->size.x = (float)ceil(boundingRect.size.width);
 	cachedGlyph->size.y = (float)ceil(boundingRect.size.height);
 	cachedGlyph->size += 2 * padding;
 
-	cachedGlyph->offset = padding;
+	for (bool32 black = 0; black <= 1; black++)
+	{
+		CFStringRef colorName = NULL;
+		if (black)
+		{
+			colorName = kCGColorBlack;
+		}
+		else
+		{
+			colorName = kCGColorWhite;
+		}
+		CGContextSetFillColorWithColor(context, CGColorGetConstantColor(colorName));
+
+		if ((cursor.x + boundingRect.size.width) >= diameter)
+		{
+			cursor.x = 0;
+			cursor.y += ceil(largestGlyphHeight) + 2 * padding;
+			largestGlyphHeight = 0;
+		}
+
+		CGPoint position = cursor;
+
+		if (black)
+		{
+			cachedGlyph->positionBlack.x = (float)position.x;
+			cachedGlyph->positionBlack.y = (float)position.y;
+		}
+		else
+		{
+			cachedGlyph->positionWhite.x = (float)position.x;
+			cachedGlyph->positionWhite.y = (float)position.y;
+		}
+
+		position.x -= boundingRect.origin.x;
+		position.y -= boundingRect.origin.y;
+
+		position.x += subpixelOffset.x;
+		position.y += subpixelOffset.y;
+
+		position.x += padding;
+		position.y += padding;
+
+		largestGlyphHeight = Max(largestGlyphHeight, boundingRect.size.height);
+
+		[self drawGlyph:glyph fromFont:font atPosition:position];
+
+		cursor.x += ceil(boundingRect.size.width) + 2 * padding;
+	}
 
 	return *cachedGlyph;
 }

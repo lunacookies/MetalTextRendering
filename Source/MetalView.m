@@ -10,7 +10,8 @@ struct Sprite
 {
 	simd_float2 position;
 	simd_float2 size;
-	simd_float2 textureCoordinates;
+	simd_float2 textureCoordinatesBlack;
+	simd_float2 textureCoordinatesWhite;
 	simd_float4 color;
 };
 
@@ -191,7 +192,8 @@ struct Sprite
 				sprite->position -= cachedGlyph.offset;
 
 				sprite->size = cachedGlyph.size;
-				sprite->textureCoordinates = cachedGlyph.position;
+				sprite->textureCoordinatesBlack = cachedGlyph.positionBlack;
+				sprite->textureCoordinatesWhite = cachedGlyph.positionWhite;
 
 				sprite->color = simdColor;
 			}

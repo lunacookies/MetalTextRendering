@@ -1,7 +1,8 @@
 typedef struct CachedGlyph CachedGlyph;
 struct CachedGlyph
 {
-	simd_float2 position;
+	simd_float2 positionBlack;
+	simd_float2 positionWhite;
 	simd_float2 size;
 	simd_float2 offset;
 };
