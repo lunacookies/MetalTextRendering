@@ -99,7 +99,7 @@ static const CGFloat padding = 2;
 		}
 		CGContextSetFillColorWithColor(context, CGColorGetConstantColor(colorName));
 
-		if ((cursor.x + boundingRect.size.width) >= diameter)
+		if (cursor.x + boundingRect.size.width + 2 * padding >= diameter)
 		{
 			cursor.x = 0;
 			cursor.y += ceil(largestGlyphHeight) + 2 * padding;
